@@ -7,7 +7,7 @@ from .models import Department, EmployeeProfile
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    password = serializers.CharField(write_only=True, required=False, allow_blank=False)
 
     class Meta:
         model = User
@@ -20,6 +20,12 @@ class UserCreateSerializer(serializers.ModelSerializer):
         }
 
 
+class DepartmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Department
+        fields = "__all__"
+
+
 class EmployeeProfileSerializer(serializers.ModelSerializer):
     user = UserCreateSerializer(required=False)
 
@@ -29,61 +35,58 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "created_at", "updated_at")
 
     def validate(self, attrs):
+        request = self.context.get("request")
+
         if self.instance is not None:
             user_data = attrs.get("user") or {}
+
             for f in ("username", "first_name", "last_name", "email"):
                 if f in user_data and not (user_data.get(f) or "").strip():
-                    raise serializers.ValidationError(
-                        {"user": {f: "Este campo não pode ser vazio."}}
-                    )
+                    raise serializers.ValidationError({"user": {f: "Este campo não pode ser vazio."}})
+
+            if request and request.user and request.user.is_authenticated and not request.user.is_superuser:
+                if "department" in attrs:
+                    raise PermissionDenied("Gestor não pode alterar o departamento.") from None
+                if "role" in attrs:
+                    raise PermissionDenied("Gestor não pode alterar o papel (role).") from None
+
             return attrs
 
         user_data = attrs.get("user") or {}
-        required = ["username", "first_name", "last_name", "email"]
-        missing = [f for f in required if not (user_data.get(f) or "").strip()]
+
+        required_fields = ["username", "first_name", "last_name", "email", "password"]
+        missing = [f for f in required_fields if not (user_data.get(f) or "").strip()]
         if missing:
-            raise serializers.ValidationError(
-                {"user": f"Campos obrigatórios ausentes: {', '.join(missing)}"}
-            )
+            raise serializers.ValidationError({"user": f"Campos obrigatórios ausentes: {', '.join(missing)}"})
 
         dept = attrs.get("department")
         if not isinstance(dept, Department):
             raise serializers.ValidationError({"department": "Departamento inválido."})
 
-        request = self.context.get("request")
         if request and request.user and request.user.is_authenticated:
             if request.user.is_superuser:
                 return attrs
 
             try:
-                requester = EmployeeProfile.objects.select_related("department").get(
-                    user=request.user
-                )
+                requester = EmployeeProfile.objects.select_related("department").get(user=request.user)
             except EmployeeProfile.DoesNotExist:
-                raise serializers.ValidationError(
-                    "Usuário solicitante não possui perfil."
-                ) from None
+                raise serializers.ValidationError("Usuário solicitante não possui perfil.") from None
 
             if requester.role != EmployeeProfile.Role.MANAGER:
                 raise serializers.ValidationError("Apenas super ou gestor pode criar perfis.")
 
             if requester.department.pk != dept.pk:
-                raise serializers.ValidationError(
-                    "Gestor só pode criar perfis do próprio departamento."
-                )
+                raise serializers.ValidationError("Gestor só pode criar perfis do próprio departamento.")
 
         return attrs
 
     @transaction.atomic
     def create(self, validated_data):
         user_data = validated_data.pop("user")
-        raw_password = (user_data.pop("password", "") or "").strip()
+        raw_password = (user_data.pop("password") or "").strip()
 
         user = User(**user_data)
-        if raw_password:
-            user.set_password(raw_password)
-        else:
-            user.set_unusable_password()
+        user.set_password(raw_password)
         user.save()
 
         profile = EmployeeProfile.objects.create(user=user, **validated_data)
@@ -91,15 +94,7 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def update(self, instance, validated_data):
-        request = self.context.get("request")
         user_data = validated_data.pop("user", None)
-
-        if request and request.user and request.user.is_authenticated:
-            if not request.user.is_superuser:
-                if "department" in validated_data:
-                    raise PermissionDenied("Gestor não pode alterar o departamento.") from None
-                if "role" in validated_data:
-                    raise PermissionDenied("Gestor não pode alterar o papel (role).") from None
 
         if user_data:
             raw_password = (user_data.pop("password", None) or "").strip()

@@ -3,10 +3,26 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.filters import SearchFilter
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 
-from .models import EmployeeProfile
+from .models import EmployeeProfile, Department
 from .permissions import IsSuperOrManager
-from .serializers import EmployeeProfileSerializer
+from .serializers import EmployeeProfileSerializer, DepartmentSerializer
+
+
+class DepartmentViewSet(viewsets.ModelViewSet):
+    queryset = Department.objects.all()
+    serializer_class = DepartmentSerializer
+    
+    def get_permissions(self):
+        """
+        Define permissões dinâmicas:
+        - Métodos de leitura (GET, HEAD, OPTIONS): Qualquer usuário autenticado.
+        - Métodos de escrita (POST, PUT, DELETE): Apenas Admin (superuser).
+        """
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [IsAdminUser()]
+        return [IsAuthenticated()]
 
 
 class EmployeeProfileViewSet(viewsets.ModelViewSet):
