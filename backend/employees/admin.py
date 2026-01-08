@@ -13,4 +13,9 @@ class DepartmentAdmin(admin.ModelAdmin):
 class EmployeeProfileAdmin(admin.ModelAdmin):
     list_display = ("id", "user", "department", "role")
     list_filter = ("department", "role")
-    search_fields = ("user__username", "user__first_name", "user__last_name", "user__email")
+    search_fields = (
+        "user__username",
+        "user__first_name",
+        "user__last_name",
+        "user__email",
+    )

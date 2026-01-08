@@ -43,15 +43,23 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
                 return attrs
 
             try:
-                requester = EmployeeProfile.objects.select_related("department").get(user=request.user)
+                requester = EmployeeProfile.objects.select_related("department").get(
+                    user=request.user
+                )
             except EmployeeProfile.DoesNotExist:
-                raise serializers.ValidationError("Usuário solicitante não possui perfil.")
+                raise serializers.ValidationError(
+                    "Usuário solicitante não possui perfil."
+                ) from None
 
             if requester.role != EmployeeProfile.Role.MANAGER:
-                raise serializers.ValidationError("Apenas super ou gestor pode criar perfis.")
+                raise serializers.ValidationError(
+                    "Apenas super ou gestor pode criar perfis."
+                )
 
             if requester.department.pk != dept.pk:
-                raise serializers.ValidationError("Gestor só pode criar perfis do próprio departamento.")
+                raise serializers.ValidationError(
+                    "Gestor só pode criar perfis do próprio departamento."
+                )
 
         return attrs
 
