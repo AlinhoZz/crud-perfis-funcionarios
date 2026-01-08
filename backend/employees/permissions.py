@@ -17,9 +17,7 @@ class IsSuperOrManager(BasePermission):
             return True
 
         try:
-            profile = EmployeeProfile.objects.select_related("department").get(
-                user=request.user
-            )
+            profile = EmployeeProfile.objects.select_related("department").get(user=request.user)
         except EmployeeProfile.DoesNotExist:
             return False
 
@@ -30,9 +28,7 @@ class IsSuperOrManager(BasePermission):
             return True
 
         try:
-            requester = EmployeeProfile.objects.select_related("department").get(
-                user=request.user
-            )
+            requester = EmployeeProfile.objects.select_related("department").get(user=request.user)
         except EmployeeProfile.DoesNotExist:
             return False
 
