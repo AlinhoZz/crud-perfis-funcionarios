@@ -1,5 +1,7 @@
+from django.http import Http404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.filters import SearchFilter
 
 from .models import EmployeeProfile
@@ -34,3 +36,15 @@ class EmployeeProfileViewSet(viewsets.ModelViewSet):
             return qs.none()
 
         return qs.filter(department=requester.department)
+
+    def get_object(self):
+        try:
+            return super().get_object()
+        except Http404:
+            if self.request.user.is_authenticated and not self.request.user.is_superuser:
+                pk = self.kwargs.get(self.lookup_field)
+                if pk and EmployeeProfile.objects.filter(pk=pk).exists():
+                    raise PermissionDenied(
+                        "Acesso negado: perfil fora do seu departamento."
+                    ) from None
+            raise
