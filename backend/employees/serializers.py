@@ -1,6 +1,7 @@
 from django.contrib.auth.models import User
 from django.db import transaction
 from rest_framework import serializers
+from rest_framework.exceptions import PermissionDenied
 
 from .models import Department, EmployeeProfile
 
@@ -11,6 +12,12 @@ class UserCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ("username", "first_name", "last_name", "email", "password")
+        extra_kwargs = {
+            "username": {"required": False, "allow_blank": True},
+            "first_name": {"required": False, "allow_blank": True},
+            "last_name": {"required": False, "allow_blank": True},
+            "email": {"required": False, "allow_blank": True},
+        }
 
 
 class EmployeeProfileSerializer(serializers.ModelSerializer):
@@ -23,6 +30,12 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         if self.instance is not None:
+            user_data = attrs.get("user") or {}
+            for f in ("username", "first_name", "last_name", "email"):
+                if f in user_data and not (user_data.get(f) or "").strip():
+                    raise serializers.ValidationError(
+                        {"user": {f: "Este campo não pode ser vazio."}}
+                    )
             return attrs
 
         user_data = attrs.get("user") or {}
@@ -75,3 +88,33 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
 
         profile = EmployeeProfile.objects.create(user=user, **validated_data)
         return profile
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        request = self.context.get("request")
+        user_data = validated_data.pop("user", None)
+
+        if request and request.user and request.user.is_authenticated:
+            if not request.user.is_superuser:
+                if "department" in validated_data:
+                    raise PermissionDenied("Gestor não pode alterar o departamento.") from None
+                if "role" in validated_data:
+                    raise PermissionDenied("Gestor não pode alterar o papel (role).") from None
+
+        if user_data:
+            raw_password = (user_data.pop("password", None) or "").strip()
+
+            for field in ("username", "first_name", "last_name", "email"):
+                if field in user_data:
+                    setattr(instance.user, field, user_data[field])
+
+            if raw_password:
+                instance.user.set_password(raw_password)
+
+            instance.user.save()
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+        return instance
