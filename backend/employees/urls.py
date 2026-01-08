@@ -1,6 +1,6 @@
 from rest_framework.routers import DefaultRouter
-from .views import EmployeeProfileViewSet, DepartmentViewSet
 
+from .views import DepartmentViewSet, EmployeeProfileViewSet
 
 router = DefaultRouter()
 router.register(r"departments", DepartmentViewSet, basename="departments")
