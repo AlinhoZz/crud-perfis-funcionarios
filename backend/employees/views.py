@@ -21,7 +21,7 @@ class EmployeeProfileViewSet(viewsets.ModelViewSet):
         "user__last_name",
         "user__email",
     ]
-    
+
     def perform_destroy(self, instance):
         if self.request.user == instance.user:
             raise PermissionDenied("Você não pode deletar seu próprio usuário.") from None
