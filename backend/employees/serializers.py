@@ -52,9 +52,7 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
                 ) from None
 
             if requester.role != EmployeeProfile.Role.MANAGER:
-                raise serializers.ValidationError(
-                    "Apenas super ou gestor pode criar perfis."
-                )
+                raise serializers.ValidationError("Apenas super ou gestor pode criar perfis.")
 
             if requester.department.pk != dept.pk:
                 raise serializers.ValidationError(

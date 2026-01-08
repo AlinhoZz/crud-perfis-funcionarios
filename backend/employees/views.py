@@ -41,10 +41,7 @@ class EmployeeProfileViewSet(viewsets.ModelViewSet):
         try:
             return super().get_object()
         except Http404:
-            if (
-                self.request.user.is_authenticated
-                and not self.request.user.is_superuser
-            ):
+            if self.request.user.is_authenticated and not self.request.user.is_superuser:
                 pk = self.kwargs.get(self.lookup_field)
                 if pk and EmployeeProfile.objects.filter(pk=pk).exists():
                     raise PermissionDenied(
