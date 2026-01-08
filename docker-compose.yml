@@ -1,0 +1,29 @@
+services:
+  db:
+    image: postgres:17
+    container_name: crud_perfis_db
+    environment:
+      POSTGRES_DB: crud_perfis
+      POSTGRES_USER: crud_perfis
+      POSTGRES_PASSWORD: crud_perfis
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+    container_name: crud_perfis_api
+    env_file:
+      - backend/.env
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+volumes:
+  pgdata:
