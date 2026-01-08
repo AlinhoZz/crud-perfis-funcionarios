@@ -1,8 +1,9 @@
 from django.http import Http404
+
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.filters import SearchFilter
-from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import EmployeeProfile
 from .permissions import IsSuperOrManager
@@ -49,5 +50,5 @@ class EmployeeProfileViewSet(viewsets.ModelViewSet):
                 if pk and EmployeeProfile.objects.filter(pk=pk).exists():
                     raise PermissionDenied(
                         "Acesso negado: perfil fora do seu departamento."
-                    )
+                    ) from None
             raise
