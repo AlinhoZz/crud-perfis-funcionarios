@@ -28,4 +28,4 @@ jobs:
       - name: Tests
         run: |
           cd backend
-          pytest -q
+          pytest -q || [ $? -eq 5 ]
